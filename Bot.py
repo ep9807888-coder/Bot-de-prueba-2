@@ -1,0 +1,88 @@
+import os
+import random
+import asyncio
+from dotenv import load_dotenv
+from kyodo import AsyncClient, ChatMessage, EventType
+
+# Carga variables del archivo .env (solo para desarrollo local)
+load_dotenv()
+
+client = AsyncClient()
+
+
+@client.middleware(EventType.ChatMessage)
+async def user_filter(message: ChatMessage):
+    if message.author.userId == client.userId:
+        return False
+    return True
+
+
+@client.command(["/help", "/commands"])
+async def help_command(message: ChatMessage):
+    await client.send_message(
+        message.chatId,
+        "📌 Available commands:\n"
+        "/help - List of commands\n"
+        "/ping - Bot status\n"
+        "/random - Random message",
+        message.circleId
+    )
+
+
+@client.command(["/1"])
+async def ping_command(message: ChatMessage):
+    await client.send_message(
+        message.chatId,
+        "2",
+        message.circleId,
+        replyMessageId=message.messageId
+    )
+
+
+@client.command(["/Toxic"])
+async def random_command(message: ChatMessage):
+    mensajes = [
+        "es gay",
+        "es negro",
+        "es femboy",
+        "es puto"
+    ]
+
+    await client.send_message(
+        message.chatId,
+        random.choice(mensajes),
+        message.circleId,
+        replyMessageId=message.messageId
+    )
+
+
+@client.event(EventType.ChatMemberJoin)
+async def on_member_join(message: ChatMessage):
+    await client.send_message(
+        message.chatId,
+        f"👋 Bienvenido/a {message.author.nickname}!",
+        message.circleId,
+        replyMessageId=message.messageId
+    )
+
+
+async def main():
+    email = os.getenv("KYODO_EMAIL")
+    password = os.getenv("KYODO_PASSWORD")
+    token = os.getenv("KYODO_TOKEN")
+
+    if token:
+        await client.login_token(token)
+    elif email and password:
+        await client.login(email, password)
+    else:
+        raise Exception(
+            "No se encontraron credenciales. Configura KYODO_EMAIL y KYODO_PASSWORD o KYODO_TOKEN."
+        )
+
+    print("✅ Bot conectado.")
+    await client.socket_wait()
+
+
+if __name__ == "__main__":
+    asyncio.run(main())
